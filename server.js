@@ -140,7 +140,7 @@ app.use((err, _req, res, _next) => {
 initSchema()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Daily work log running at http://localhost:${PORT}`);
+      console.log(`Worklog running at http://localhost:${PORT}`);
     });
   })
   .catch((err) => {

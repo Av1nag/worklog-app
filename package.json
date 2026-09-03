@@ -1,7 +1,7 @@
 {
-  "name": "daily-work-log",
+  "name": "worklog",
   "version": "1.0.0",
-  "description": "Daily work log app",
+  "description": "Worklog — a running record of what got done",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
