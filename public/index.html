@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Worklog</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📓</text></svg>" />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1 class="wordmark">Worklog</h1>
+        <p class="tagline">a running record of what got done</p>
+      </div>
+      <div class="topbar-actions">
+        <span class="account-email" id="account-email"></span>
+        <button type="button" class="btn btn-ghost" id="logout-btn">Sign out</button>
+        <button type="button" class="btn btn-primary" id="new-entry-btn">New entry</button>
+      </div>
+    </header>
+
+    <main class="ledger" id="view-log">
+      <div class="ledger-bar">
+        <div class="segmented segmented--sm" id="view-toggle" role="group" aria-label="Entry view">
+          <button type="button" class="segmented-option" data-view="list" aria-pressed="true">List</button>
+          <button type="button" class="segmented-option" data-view="cards" aria-pressed="false">Cards</button>
+        </div>
+      </div>
+      <div id="log-content"><p class="empty">Loading…</p></div>
+    </main>
+  </div>
+
+  <dialog class="entry-dialog" id="entry-dialog">
+    <form id="entry-form">
+      <div class="dialog-head">
+        <h2 id="entry-dialog-title">New entry</h2>
+        <button type="button" class="icon-btn" id="entry-close" aria-label="Close">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="field-grid">
+          <label class="field">
+            <span>Date</span>
+            <input type="date" id="f-date" required />
+          </label>
+          <label class="field">
+            <span>Complexity</span>
+            <select id="f-complexity">
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Task</span>
+          <input type="text" id="f-task" placeholder="Implemented X feature" required />
+        </label>
+
+        <label class="field">
+          <span>What I did <em>(one line each)</em></span>
+          <textarea id="f-did" rows="4" placeholder="Created Angular component&#10;Integrated API&#10;Added RxJS handling&#10;Added validation"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Issue / blocker</span>
+          <textarea id="f-issue" rows="2" placeholder="API returned inconsistent response"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Solution</span>
+          <textarea id="f-solution" rows="2" placeholder="Added response transformation in service"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Impact / outcome</span>
+          <textarea id="f-impact" rows="2" placeholder="Removed duplicate processing from 3 components"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Technologies <em>(comma separated)</em></span>
+          <input type="text" id="f-tech" placeholder="Angular, TypeScript, RxJS, REST API" />
+        </label>
+
+        <details class="more">
+          <summary>More detail</summary>
+          <div class="more-body">
+            <label class="field">
+              <span>Collaboration <em>(only if notable)</em></span>
+              <textarea id="f-collab" rows="3" placeholder="People/Teams: Priya, QA team&#10;Discussion/Decision: Agreed to stub the clock in tests&#10;Dependency: Blocked on test-utils v2 release&#10;Review/Feedback: Approved by Sam"></textarea>
+            </label>
+            <label class="field">
+              <span>Win of the day <em>(optional)</em></span>
+              <input type="text" id="f-win" />
+            </label>
+            <label class="field">
+              <span>Tomorrow <em>(optional)</em></span>
+              <textarea id="f-tomorrow" rows="2"></textarea>
+            </label>
+          </div>
+        </details>
+      </div>
+
+      <div class="dialog-foot">
+        <button type="button" class="btn btn-ghost" id="entry-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="entry-submit">Add entry</button>
+      </div>
+    </form>
+  </dialog>
+
+  <a class="bmc-button" href="https://buymeacoffee.com/f1quc01xky" target="_blank" rel="noopener" title="Buy me a coffee">
+    <img src="/buy-me-a-coffee.png" alt="Buy me a coffee" />
+  </a>
+
+  <script src="/app.js"></script>
+</body>
+</html>
