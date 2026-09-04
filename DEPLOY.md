@@ -67,7 +67,16 @@ DATABASE_URL=postgres://worklog:...@localhost:5432/worklog
 SESSION_SECRET=<node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
 NODE_ENV=production
 PORT=3000
+BREVO_API_KEY=<from Brevo dashboard>
+EMAIL_FROM=noreply@tunitive.com
+APP_URL=https://worklog.tunitive.com
 ```
+
+Registration sends a verification email via [Brevo](https://brevo.com) (free
+tier, 300/day) — see `.env.example` for setup notes. `EMAIL_FROM` must be a
+verified sender/domain in Brevo (add SPF/DKIM records at your DNS provider;
+Brevo's dashboard walks through it). Accounts can't sign in until the link is
+clicked.
 
 ## 4. Run it as a service
 

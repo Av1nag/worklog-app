@@ -17,11 +17,22 @@ const pool = new Pool({
 export async function initSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id            BIGSERIAL PRIMARY KEY,
-      email         TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      id                          BIGSERIAL PRIMARY KEY,
+      email                       TEXT NOT NULL UNIQUE,
+      password_hash               TEXT NOT NULL,
+      email_verified              BOOLEAN NOT NULL DEFAULT false,
+      verification_token_hash     TEXT,
+      verification_token_expires  TIMESTAMPTZ,
+      reset_token_hash            TEXT,
+      reset_token_expires         TIMESTAMPTZ,
+      created_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;
 
     CREATE TABLE IF NOT EXISTS entries (
       id           BIGSERIAL PRIMARY KEY,

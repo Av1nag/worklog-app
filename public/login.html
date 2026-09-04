@@ -15,9 +15,13 @@
         <p class="tagline">a running record of what got done</p>
       </header>
 
-      <div class="segmented" role="tablist">
+      <div class="segmented" role="tablist" id="mode-tabs">
         <button class="segmented-option" id="tab-login" role="tab" aria-selected="true">Sign in</button>
         <button class="segmented-option" id="tab-register" role="tab" aria-selected="false">Create account</button>
+      </div>
+
+      <div class="forgot-header" id="forgot-header" hidden>
+        <button type="button" class="link-inline" id="back-link">← Back to sign in</button>
       </div>
 
       <form class="auth-form" id="auth-form">
@@ -25,11 +29,20 @@
           <span>Email</span>
           <input type="email" id="f-email" autocomplete="email" required />
         </label>
-        <label class="field">
-          <span>Password <em id="pw-hint"></em></span>
+        <label class="field" id="password-field">
+          <span class="field-label-row">
+            Password <em id="pw-hint"></em>
+            <button type="button" class="link-inline" id="forgot-link">Forgot password?</button>
+          </span>
           <input type="password" id="f-password" autocomplete="current-password" required minlength="8" />
         </label>
-        <p class="auth-error" id="auth-error"></p>
+
+        <div class="auth-messages">
+          <p class="auth-error" id="auth-error" hidden></p>
+          <p class="auth-info" id="auth-info" hidden></p>
+          <button type="button" class="link-inline" id="resend-btn" hidden>Resend verification email</button>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-block" id="auth-submit">Sign in</button>
       </form>
     </div>
