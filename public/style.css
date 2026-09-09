@@ -101,6 +101,22 @@ button { font-family: inherit; }
 
 .btn-block { width: 100%; }
 
+.fab {
+  position: fixed;
+  right: clamp(16px, 4vw, 24px);
+  /* stacked above the buy-me-a-coffee button (36px tall + gap) */
+  bottom: calc(clamp(16px, 4vw, 24px) + 48px);
+  z-index: 40;
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-pop);
+}
+.fab-icon {
+  margin-left: -2px;
+}
+
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -157,7 +173,13 @@ button { font-family: inherit; }
 .field textarea {
   padding: 9px 11px;
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
+  min-height: calc(2 * 1.5em + 18px);
+}
+#f-did,
+#f-collab {
+  min-height: calc(4 * 1.5em + 18px);
 }
 .field input:focus,
 .field select:focus,
@@ -180,7 +202,10 @@ button { font-family: inherit; }
 .app {
   max-width: 880px;
   margin: 0 auto;
-  padding: clamp(16px, 4vw, 40px) clamp(16px, 4vw, 32px) 104px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 4vw, 40px) clamp(16px, 4vw, 32px) 28px;
 }
 
 .topbar {
@@ -388,13 +413,64 @@ button { font-family: inherit; }
 
 .note-line {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
   padding: 3px 0;
+  border-radius: var(--r-sm);
+  transition: box-shadow 0.16s ease, background-color 0.16s ease;
+}
+.note-line.note-dragging {
+  position: relative;
+  z-index: 5;
+  padding: 3px 10px;
+  margin: 0 -10px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.3), 0 2px 6px -2px rgba(0, 0, 0, 0.2);
+  cursor: grabbing;
+  will-change: transform;
+}
+.note-line.note-dragging .note-drag {
+  opacity: 1;
+  cursor: grabbing;
+}
+
+body.note-reordering {
+  cursor: grabbing;
+  user-select: none;
+}
+body.note-reordering .note-text {
+  cursor: grabbing;
+}
+
+.note-drag {
+  flex-shrink: 0;
+  margin: 3px -2px 0 -6px;
+  width: 16px;
+  min-height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.12s ease;
+}
+.note-drag:active { cursor: grabbing; }
+.note-line:hover .note-drag,
+.note-line:focus-within .note-drag {
+  opacity: 1;
+}
+@media (hover: none) {
+  .note-drag { opacity: 0.5; }
 }
 
 .note-check {
   flex-shrink: 0;
+  margin-top: 4px;
   width: 17px;
   height: 17px;
   padding: 0;
@@ -431,6 +507,10 @@ button { font-family: inherit; }
   color: var(--text);
   background: transparent;
   border: none;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .note-text:focus { outline: none; }
 .note-text::placeholder { color: var(--text-faint); }
@@ -581,13 +661,23 @@ button { font-family: inherit; }
   flex-direction: column;
   gap: 8px;
 }
-.auth-error {
-  font-size: 13px;
-  color: var(--danger);
-}
+.auth-error,
 .auth-info {
   font-size: 13px;
-  color: var(--text-soft);
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunk);
+}
+.auth-error {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border-strong));
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-sunk));
+}
+.auth-info {
+  color: var(--text);
+  border-left: 3px solid var(--text);
 }
 
 .link-inline {
@@ -626,6 +716,58 @@ button { font-family: inherit; }
 .bmc-button:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 3px;
+}
+
+/* ---------- footer ---------- */
+.app-footer {
+  margin-top: auto;
+  padding-top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  text-align: center;
+}
+.gh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 15px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-soft);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  text-decoration: none;
+  transition: color 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+.gh-link:hover {
+  color: var(--text);
+  border-color: var(--text);
+  transform: translateY(-1px);
+}
+.gh-link svg {
+  flex-shrink: 0;
+}
+.gh-repo > span {
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.gh-link:hover .gh-repo > span {
+  color: var(--text-soft);
+}
+.app-footer-note {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding-bottom: 116px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

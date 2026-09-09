@@ -69,6 +69,16 @@ function noteLineEl(text = '', checked = false) {
   const line = document.createElement('div');
   line.className = 'note-line' + (checked ? ' checked' : '');
 
+  const drag = document.createElement('button');
+  drag.type = 'button';
+  drag.className = 'note-drag';
+  drag.tabIndex = -1;
+  drag.setAttribute('aria-label', 'Drag to reorder');
+  drag.innerHTML =
+    '<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">' +
+    '<circle cx="3" cy="3" r="1.2"/><circle cx="3" cy="8" r="1.2"/><circle cx="3" cy="13" r="1.2"/>' +
+    '<circle cx="7" cy="3" r="1.2"/><circle cx="7" cy="8" r="1.2"/><circle cx="7" cy="13" r="1.2"/></svg>';
+
   const check = document.createElement('button');
   check.type = 'button';
   check.className = 'note-check';
@@ -77,14 +87,27 @@ function noteLineEl(text = '', checked = false) {
   check.setAttribute('aria-label', 'Toggle done');
   check.tabIndex = -1;
 
-  const input = document.createElement('input');
-  input.type = 'text';
+  const input = document.createElement('textarea');
   input.className = 'note-text';
+  input.rows = 1;
   input.autocomplete = 'off';
   input.value = text;
 
-  line.append(check, input);
+  line.append(drag, check, input);
   return line;
+}
+
+// Keep completed lines at the bottom, preserving relative order in each group.
+function reflowNotepad() {
+  const pad = notepadEl();
+  [...pad.children]
+    .filter((l) => l.classList.contains('checked'))
+    .forEach((l) => pad.appendChild(l));
+}
+
+function autoGrowNote(el) {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 function renderNotepad(lines) {
@@ -92,7 +115,9 @@ function renderNotepad(lines) {
   pad.innerHTML = '';
   const use = lines && lines.length ? lines : [{ text: '', checked: false }];
   for (const l of use) pad.appendChild(noteLineEl(l.text || '', Boolean(l.checked)));
+  reflowNotepad();
   pad.querySelector('.note-text').placeholder = 'Write a todo…';
+  pad.querySelectorAll('.note-text').forEach(autoGrowNote);
 }
 
 function serializeNotepad() {
@@ -134,13 +159,37 @@ function onNotepadKeydown(e) {
   if (!input.classList || !input.classList.contains('note-text')) return;
   const line = input.closest('.note-line');
 
+  if (e.key === 'Enter' && e.shiftKey) {
+    // let the textarea insert a newline; just keep height and save in sync
+    requestAnimationFrame(() => autoGrowNote(input));
+    scheduleNotepadSave();
+    return;
+  }
+
+  // Alt + Arrow reorders the current line
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    const sib =
+      e.key === 'ArrowUp' ? line.previousElementSibling : line.nextElementSibling;
+    if (!sib) return;
+    e.preventDefault();
+    if (e.key === 'ArrowUp') line.parentNode.insertBefore(line, sib);
+    else line.parentNode.insertBefore(sib, line);
+    const caret = input.selectionStart;
+    input.focus();
+    input.setSelectionRange(caret, caret);
+    scheduleNotepadSave();
+    return;
+  }
+
   if (e.key === 'Enter') {
     e.preventDefault();
     const after = input.value.slice(input.selectionEnd);
     input.value = input.value.slice(0, input.selectionStart);
+    autoGrowNote(input);
     const newLine = noteLineEl(after, false);
     line.after(newLine);
     focusLine(newLine, 0);
+    autoGrowNote(newLine.querySelector('.note-text'));
     scheduleNotepadSave();
     return;
   }
@@ -154,14 +203,20 @@ function onNotepadKeydown(e) {
     prevInput.value += input.value;
     line.remove();
     focusLine(prev, caret);
+    autoGrowNote(prevInput);
     scheduleNotepadSave();
     return;
   }
 
-  if (e.key === 'ArrowUp' && line.previousElementSibling) {
+  const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
+  const atEnd =
+    input.selectionStart === input.value.length &&
+    input.selectionEnd === input.value.length;
+
+  if (e.key === 'ArrowUp' && atStart && line.previousElementSibling) {
     e.preventDefault();
     focusLine(line.previousElementSibling, 'end');
-  } else if (e.key === 'ArrowDown' && line.nextElementSibling) {
+  } else if (e.key === 'ArrowDown' && atEnd && line.nextElementSibling) {
     e.preventDefault();
     focusLine(line.nextElementSibling, 'end');
   }
@@ -174,7 +229,106 @@ function onNotepadClick(e) {
   const checked = !line.classList.contains('checked');
   line.classList.toggle('checked', checked);
   check.setAttribute('aria-checked', String(checked));
+  reflowNotepad();
   scheduleNotepadSave();
+}
+
+function lineBeforePoint(pad, y) {
+  const lines = [...pad.querySelectorAll('.note-line:not(.note-dragging)')];
+  return lines.find((line) => {
+    const box = line.getBoundingClientRect();
+    return y < box.top + box.height / 2;
+  });
+}
+
+const NOTE_SLIDE = 190;
+const NOTE_EASE = 'cubic-bezier(0.2, 0, 0, 1)';
+const NOTE_TRANSITION =
+  `transform ${NOTE_SLIDE}ms ${NOTE_EASE}, box-shadow 0.16s ease, background-color 0.16s ease`;
+
+function initTodoDrag(pad) {
+  let drag = null;
+  let startY = 0; // pointer Y at grab
+  let pointerY = 0; // latest pointer Y
+  let slack = 0; // layout shift compensation so the held line tracks the pointer
+
+  const follow = () => {
+    drag.style.transform = `translateY(${pointerY - startY + slack}px) scale(1.015)`;
+  };
+
+  // Reorder the DOM, then animate every displaced sibling from its old slot (FLIP).
+  const reorder = (mutate) => {
+    const others = [...pad.querySelectorAll('.note-line')].filter((l) => l !== drag);
+    const prevTop = new Map(others.map((l) => [l, l.getBoundingClientRect().top]));
+    const dragBefore = drag.getBoundingClientRect().top;
+
+    mutate();
+
+    slack += dragBefore - drag.getBoundingClientRect().top;
+    follow();
+
+    for (const l of others) {
+      const delta = prevTop.get(l) - l.getBoundingClientRect().top;
+      if (!delta) continue;
+      l.style.transition = 'none';
+      l.style.transform = `translateY(${delta}px)`;
+      requestAnimationFrame(() => {
+        l.style.transition = NOTE_TRANSITION;
+        l.style.transform = '';
+      });
+    }
+  };
+
+  pad.addEventListener('pointerdown', (e) => {
+    const handle = e.target.closest('.note-drag');
+    if (!handle) return;
+    e.preventDefault();
+    drag = handle.closest('.note-line');
+    startY = pointerY = e.clientY;
+    slack = 0;
+    drag.classList.add('note-dragging');
+    document.body.classList.add('note-reordering');
+    handle.setPointerCapture(e.pointerId);
+    drag.style.transition = 'transform 130ms ease';
+    follow();
+  });
+
+  pad.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    drag.style.transition = 'none';
+    pointerY = e.clientY;
+    follow();
+
+    const before = lineBeforePoint(pad, e.clientY);
+    if (!before) {
+      if (pad.lastElementChild !== drag) reorder(() => pad.appendChild(drag));
+    } else if (before !== drag && before.previousElementSibling !== drag) {
+      reorder(() => pad.insertBefore(drag, before));
+    }
+  });
+
+  const end = () => {
+    if (!drag) return;
+    const line = drag;
+    drag = null;
+    document.body.classList.remove('note-reordering');
+
+    line.style.transition = NOTE_TRANSITION;
+    line.style.transform = '';
+    const settle = (e) => {
+      if (e && e.propertyName !== 'transform') return;
+      line.classList.remove('note-dragging');
+      line.style.transition = '';
+      line.style.transform = '';
+      line.removeEventListener('transitionend', settle);
+      clearTimeout(timer);
+    };
+    const timer = setTimeout(settle, NOTE_SLIDE + 60);
+    line.addEventListener('transitionend', settle);
+    scheduleNotepadSave();
+  };
+  pad.addEventListener('pointerup', end);
+  pad.addEventListener('pointercancel', end);
 }
 
 function initTodos() {
@@ -182,11 +336,14 @@ function initTodos() {
   pad.addEventListener('keydown', onNotepadKeydown);
   pad.addEventListener('click', onNotepadClick);
   pad.addEventListener('input', (e) => {
-    if (e.target.classList.contains('note-text')) scheduleNotepadSave();
+    if (!e.target.classList.contains('note-text')) return;
+    autoGrowNote(e.target);
+    scheduleNotepadSave();
   });
   pad.addEventListener('focusout', (e) => {
     if (!pad.contains(e.relatedTarget) && notepadSaveTimer) saveNotepad();
   });
+  initTodoDrag(pad);
 }
 
 function applySection(section) {
@@ -289,6 +446,8 @@ async function handleSubmit(e) {
   });
   if (!res.ok) return;
 
+  clearDraft();
+  document.getElementById('entry-form').reset();
   closeEntryDialog();
   await loadLog();
 }
@@ -299,6 +458,58 @@ async function handleDelete(id) {
   loadLog();
 }
 
+const DRAFT_KEY = 'worklog.draft';
+const DRAFT_FIELDS = ['f-date', 'f-task', 'f-complexity', 'f-did', 'f-issue', 'f-solution', 'f-collab', 'f-win'];
+
+function draftHasContent(data) {
+  return ['f-task', 'f-did', 'f-issue', 'f-solution', 'f-collab', 'f-win'].some(
+    (id) => (data[id] || '').trim() !== ''
+  );
+}
+
+function saveDraft() {
+  if (editingId !== null) return;
+  const data = {};
+  DRAFT_FIELDS.forEach((id) => {
+    data[id] = document.getElementById(id).value;
+  });
+  try {
+    if (draftHasContent(data)) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    } else {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  } catch {}
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {}
+}
+
+function restoreDraft() {
+  let data;
+  try {
+    data = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+  } catch {}
+  if (!data) return;
+  DRAFT_FIELDS.forEach((id) => {
+    if (data[id] != null) document.getElementById(id).value = data[id];
+  });
+}
+
+function autoGrowTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function autoGrowAll() {
+  document
+    .querySelectorAll('#entry-form textarea')
+    .forEach((el) => autoGrowTextarea(el));
+}
+
 function openEntryDialog() {
   editingId = null;
   document.getElementById('entry-dialog-title').textContent = 'New entry';
@@ -306,7 +517,9 @@ function openEntryDialog() {
   document.getElementById('entry-form').reset();
   document.getElementById('f-date').value = todayStr();
   document.getElementById('f-complexity').value = 'None';
+  restoreDraft();
   document.getElementById('entry-dialog').showModal();
+  autoGrowAll();
   document.getElementById('f-task').focus();
 }
 
@@ -332,6 +545,7 @@ function openEditDialog(id) {
   set('f-win', entry.win);
 
   document.getElementById('entry-dialog').showModal();
+  autoGrowAll();
   document.getElementById('f-task').focus();
 }
 
@@ -389,6 +603,10 @@ async function init() {
   document.getElementById('entry-cancel').addEventListener('click', closeEntryDialog);
   dialog.addEventListener('click', (e) => {
     if (e.target === dialog) closeEntryDialog();
+  });
+  dialog.addEventListener('close', saveDraft);
+  document.querySelectorAll('#entry-form textarea').forEach((el) => {
+    el.addEventListener('input', () => autoGrowTextarea(el));
   });
 
   document.addEventListener('click', (e) => {
