@@ -22,12 +22,6 @@ function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function techList(technologies) {
-  if (!technologies.length) return '';
-  const chips = technologies.map((t) => `<span class="tech-chip">${escapeHtml(t)}</span>`).join('');
-  return `<div class="tech-list">${chips}</div>`;
-}
-
 function metaBlock(label, value) {
   return value ? `<p class="entry-meta"><strong>${label}</strong>${escapeHtml(value)}</p>` : '';
 }
@@ -59,12 +53,168 @@ function entryCard(entry) {
       ${didItems ? `<ul class="entry-did">${didItems}</ul>` : ''}
       ${metaBlock('Issue', entry.issue)}
       ${metaBlock('Solution', entry.solution)}
-      ${metaBlock('Impact', entry.impact)}
       ${collabBlock(entry.collaboration || '')}
       ${entry.win ? `<p class="entry-meta"><strong>Win</strong>${escapeHtml(entry.win)}</p>` : ''}
-      ${entry.tomorrow ? `<p class="entry-meta"><strong>Next</strong>${escapeHtml(entry.tomorrow)}</p>` : ''}
-      ${techList(entry.technologies)}
     </article>`;
+}
+
+/* ---------- todos notepad ---------- */
+let notepadSaveTimer = null;
+
+function notepadEl() {
+  return document.getElementById('notepad');
+}
+
+function noteLineEl(text = '', checked = false) {
+  const line = document.createElement('div');
+  line.className = 'note-line' + (checked ? ' checked' : '');
+
+  const check = document.createElement('button');
+  check.type = 'button';
+  check.className = 'note-check';
+  check.setAttribute('role', 'checkbox');
+  check.setAttribute('aria-checked', String(checked));
+  check.setAttribute('aria-label', 'Toggle done');
+  check.tabIndex = -1;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'note-text';
+  input.autocomplete = 'off';
+  input.value = text;
+
+  line.append(check, input);
+  return line;
+}
+
+function renderNotepad(lines) {
+  const pad = notepadEl();
+  pad.innerHTML = '';
+  const use = lines && lines.length ? lines : [{ text: '', checked: false }];
+  for (const l of use) pad.appendChild(noteLineEl(l.text || '', Boolean(l.checked)));
+  pad.querySelector('.note-text').placeholder = 'Write a todo…';
+}
+
+function serializeNotepad() {
+  return [...notepadEl().querySelectorAll('.note-line')].map((line) => ({
+    text: line.querySelector('.note-text').value,
+    checked: line.classList.contains('checked'),
+  }));
+}
+
+function focusLine(line, caret) {
+  const input = line.querySelector('.note-text');
+  input.focus();
+  const pos = caret === 'end' ? input.value.length : caret || 0;
+  input.setSelectionRange(pos, pos);
+}
+
+async function saveNotepad() {
+  clearTimeout(notepadSaveTimer);
+  notepadSaveTimer = null;
+  await api('/api/todos', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lines: serializeNotepad() }),
+  });
+}
+
+function scheduleNotepadSave() {
+  clearTimeout(notepadSaveTimer);
+  notepadSaveTimer = setTimeout(saveNotepad, 700);
+}
+
+async function loadTodos() {
+  const data = await api('/api/todos').then((r) => r.json());
+  renderNotepad(data.lines || []);
+}
+
+function onNotepadKeydown(e) {
+  const input = e.target;
+  if (!input.classList || !input.classList.contains('note-text')) return;
+  const line = input.closest('.note-line');
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const after = input.value.slice(input.selectionEnd);
+    input.value = input.value.slice(0, input.selectionStart);
+    const newLine = noteLineEl(after, false);
+    line.after(newLine);
+    focusLine(newLine, 0);
+    scheduleNotepadSave();
+    return;
+  }
+
+  if (e.key === 'Backspace' && input.selectionStart === 0 && input.selectionEnd === 0) {
+    const prev = line.previousElementSibling;
+    if (!prev) return;
+    e.preventDefault();
+    const prevInput = prev.querySelector('.note-text');
+    const caret = prevInput.value.length;
+    prevInput.value += input.value;
+    line.remove();
+    focusLine(prev, caret);
+    scheduleNotepadSave();
+    return;
+  }
+
+  if (e.key === 'ArrowUp' && line.previousElementSibling) {
+    e.preventDefault();
+    focusLine(line.previousElementSibling, 'end');
+  } else if (e.key === 'ArrowDown' && line.nextElementSibling) {
+    e.preventDefault();
+    focusLine(line.nextElementSibling, 'end');
+  }
+}
+
+function onNotepadClick(e) {
+  const check = e.target.closest('.note-check');
+  if (!check) return;
+  const line = check.closest('.note-line');
+  const checked = !line.classList.contains('checked');
+  line.classList.toggle('checked', checked);
+  check.setAttribute('aria-checked', String(checked));
+  scheduleNotepadSave();
+}
+
+function initTodos() {
+  const pad = notepadEl();
+  pad.addEventListener('keydown', onNotepadKeydown);
+  pad.addEventListener('click', onNotepadClick);
+  pad.addEventListener('input', (e) => {
+    if (e.target.classList.contains('note-text')) scheduleNotepadSave();
+  });
+  pad.addEventListener('focusout', (e) => {
+    if (!pad.contains(e.relatedTarget) && notepadSaveTimer) saveNotepad();
+  });
+}
+
+function applySection(section) {
+  if (section !== 'log' && section !== 'todos') section = 'log';
+  document.getElementById('view-log').hidden = section !== 'log';
+  document.getElementById('view-todos').hidden = section !== 'todos';
+  document.getElementById('new-entry-btn').hidden = section !== 'log';
+  document.querySelectorAll('#section-nav .segmented-option').forEach((btn) => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.section === section));
+  });
+  try {
+    localStorage.setItem('worklog.section', section);
+  } catch {}
+  if (section === 'todos') loadTodos();
+  else loadLog();
+}
+
+function initSection() {
+  let section = 'log';
+  try {
+    section = localStorage.getItem('worklog.section') || 'log';
+  } catch {}
+  applySection(section);
+  document.getElementById('section-nav').addEventListener('click', (e) => {
+    const btn = e.target.closest('.segmented-option');
+    if (btn) applySection(btn.dataset.section);
+  });
+  initTodos();
 }
 
 function groupByDate(entries) {
@@ -128,11 +278,8 @@ async function handleSubmit(e) {
     whatIDid: readMultiline('f-did'),
     issue: document.getElementById('f-issue').value,
     solution: document.getElementById('f-solution').value,
-    impact: document.getElementById('f-impact').value,
     collaboration: document.getElementById('f-collab').value,
     win: document.getElementById('f-win').value,
-    tomorrow: document.getElementById('f-tomorrow').value,
-    technologies: document.getElementById('f-tech').value,
   };
 
   const res = await api(editingId ? `/api/entries/${editingId}` : '/api/entries', {
@@ -159,7 +306,6 @@ function openEntryDialog() {
   document.getElementById('entry-form').reset();
   document.getElementById('f-date').value = todayStr();
   document.getElementById('f-complexity').value = 'None';
-  document.querySelector('.more').open = false;
   document.getElementById('entry-dialog').showModal();
   document.getElementById('f-task').focus();
 }
@@ -182,15 +328,8 @@ function openEditDialog(id) {
   set('f-did', entry.whatIDid.join('\n'));
   set('f-issue', entry.issue);
   set('f-solution', entry.solution);
-  set('f-impact', entry.impact);
   set('f-collab', entry.collaboration);
   set('f-win', entry.win);
-  set('f-tomorrow', entry.tomorrow);
-  set('f-tech', entry.technologies.join(', '));
-
-  document.querySelector('.more').open = Boolean(
-    entry.collaboration || entry.win || entry.tomorrow
-  );
 
   document.getElementById('entry-dialog').showModal();
   document.getElementById('f-task').focus();
@@ -271,7 +410,7 @@ async function init() {
   });
 
   initView();
-  loadLog();
+  initSection();
 }
 
 init();

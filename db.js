@@ -43,16 +43,25 @@ export async function initSchema() {
       what_i_did   TEXT NOT NULL DEFAULT '',
       issue        TEXT NOT NULL DEFAULT '',
       solution     TEXT NOT NULL DEFAULT '',
-      impact       TEXT NOT NULL DEFAULT '',
       collaboration TEXT NOT NULL DEFAULT '',
       win          TEXT NOT NULL DEFAULT '',
-      tomorrow     TEXT NOT NULL DEFAULT '',
-      technologies TEXT NOT NULL DEFAULT '',
       created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    ALTER TABLE entries DROP COLUMN IF EXISTS technologies;
+    ALTER TABLE entries DROP COLUMN IF EXISTS impact;
+    ALTER TABLE entries DROP COLUMN IF EXISTS tomorrow;
+
     CREATE INDEX IF NOT EXISTS idx_entries_user_date
       ON entries (user_id, date DESC, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS todo_lists (
+      user_id      BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      lines        JSONB NOT NULL DEFAULT '[]'::jsonb,
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    DROP TABLE IF EXISTS todos;
   `);
 }
 

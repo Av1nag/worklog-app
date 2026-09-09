@@ -21,6 +21,13 @@
       </div>
     </header>
 
+    <div class="section-nav-bar">
+      <div class="segmented segmented--sm" id="section-nav" role="group" aria-label="Section">
+        <button type="button" class="segmented-option" data-section="log" aria-pressed="true">Log</button>
+        <button type="button" class="segmented-option" data-section="todos" aria-pressed="false">Todos</button>
+      </div>
+    </div>
+
     <main class="ledger" id="view-log">
       <div class="ledger-bar">
         <div class="segmented segmented--sm" id="view-toggle" role="group" aria-label="Entry view">
@@ -29,6 +36,10 @@
         </div>
       </div>
       <div id="log-content"><p class="empty">Loading…</p></div>
+    </main>
+
+    <main class="ledger" id="view-todos" hidden>
+      <div class="notepad" id="notepad"></div>
     </main>
   </div>
 
@@ -58,51 +69,32 @@
 
         <label class="field">
           <span>Task</span>
-          <input type="text" id="f-task" placeholder="Implemented X feature" required />
+          <input type="text" id="f-task" placeholder="Short summary of what you worked on" required />
         </label>
 
         <label class="field">
           <span>What I did <em>(one line each)</em></span>
-          <textarea id="f-did" rows="4" placeholder="Created Angular component&#10;Integrated API&#10;Added RxJS handling&#10;Added validation"></textarea>
+          <textarea id="f-did" rows="4" placeholder="Break the work into steps&#10;One line each"></textarea>
         </label>
 
         <label class="field">
           <span>Issue / blocker</span>
-          <textarea id="f-issue" rows="2" placeholder="API returned inconsistent response"></textarea>
+          <textarea id="f-issue" rows="2" placeholder="What got in the way, if anything"></textarea>
         </label>
 
         <label class="field">
           <span>Solution</span>
-          <textarea id="f-solution" rows="2" placeholder="Added response transformation in service"></textarea>
+          <textarea id="f-solution" rows="2" placeholder="How it was resolved"></textarea>
         </label>
 
         <label class="field">
-          <span>Impact / outcome</span>
-          <textarea id="f-impact" rows="2" placeholder="Removed duplicate processing from 3 components"></textarea>
+          <span>Collaboration <em>(only if notable)</em></span>
+          <textarea id="f-collab" rows="4" placeholder="Who was involved&#10;What was discussed or decided&#10;Anything you're waiting on&#10;Who reviewed or signed off"></textarea>
         </label>
-
         <label class="field">
-          <span>Technologies <em>(comma separated)</em></span>
-          <input type="text" id="f-tech" placeholder="Angular, TypeScript, RxJS, REST API" />
+          <span>Win of the day <em>(optional)</em></span>
+          <input type="text" id="f-win" placeholder="Something that went well" />
         </label>
-
-        <details class="more">
-          <summary>More detail</summary>
-          <div class="more-body">
-            <label class="field">
-              <span>Collaboration <em>(only if notable)</em></span>
-              <textarea id="f-collab" rows="3" placeholder="People/Teams: Priya, QA team&#10;Discussion/Decision: Agreed to stub the clock in tests&#10;Dependency: Blocked on test-utils v2 release&#10;Review/Feedback: Approved by Sam"></textarea>
-            </label>
-            <label class="field">
-              <span>Win of the day <em>(optional)</em></span>
-              <input type="text" id="f-win" />
-            </label>
-            <label class="field">
-              <span>Tomorrow <em>(optional)</em></span>
-              <textarea id="f-tomorrow" rows="2"></textarea>
-            </label>
-          </div>
-        </details>
       </div>
 
       <div class="dialog-foot">

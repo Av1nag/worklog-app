@@ -367,25 +367,76 @@ button { font-family: inherit; }
 }
 .entry-collab p { margin-bottom: 2px; }
 
-.tech-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
-}
-.tech-chip {
-  padding: 3px 10px;
-  font-size: 11px;
-  color: var(--text-soft);
-  background: var(--surface-sunk);
-  border-radius: var(--r-pill);
-}
-
 .empty {
   padding: 56px 0;
   text-align: center;
   font-size: 14px;
   color: var(--text-faint);
+}
+
+/* ---------- section nav ---------- */
+.section-nav-bar {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+/* ---------- todos notepad ---------- */
+.notepad {
+  padding: 8px 0;
+  min-height: 60vh;
+}
+
+.note-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.note-check {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.note-check:hover { border-color: var(--text); }
+.note-line.checked .note-check {
+  background: var(--text);
+  border-color: var(--text);
+  position: relative;
+}
+.note-line.checked .note-check::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--on-text);
+}
+
+.note-text {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: transparent;
+  border: none;
+}
+.note-text:focus { outline: none; }
+.note-text::placeholder { color: var(--text-faint); }
+.note-line.checked .note-text {
+  color: var(--text-faint);
+  text-decoration: line-through;
 }
 
 /* ---------- entry dialog ---------- */
@@ -446,37 +497,6 @@ button { font-family: inherit; }
   gap: 10px;
   padding: 14px 20px;
   border-top: 1px solid var(--border);
-}
-
-.more {
-  border-top: 1px solid var(--border);
-  padding-top: 4px;
-}
-.more > summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 0;
-  list-style: none;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-soft);
-  cursor: pointer;
-}
-.more > summary::-webkit-details-marker { display: none; }
-.more > summary::before {
-  content: "+";
-  display: inline-block;
-  width: 12px;
-  font-size: 14px;
-  text-align: center;
-}
-.more[open] > summary::before { content: "\2013"; }
-.more-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding-top: 4px;
 }
 
 /* ---------- auth ---------- */
